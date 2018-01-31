@@ -1,0 +1,29 @@
+{
+  "name": "fullstack-luettelo",
+  "version": "1.0.0",
+  "description": "HY:n fullstack kurssin suoritus.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "watch": "node_modules/.bin/nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zamizmi/fullstack-luettelo.git"
+  },
+  "author": "zamizmi",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Zamizmi/fullstack-luettelo/issues"
+  },
+  "homepage": "https://github.com/Zamizmi/fullstack-luettelo#readme",
+  "devDependencies": {
+    "nodemon": "^1.14.11"
+  },
+  "dependencies": {
+    "cors": "^2.8.4",
+    "express": "^4.16.2",
+    "morgan": "^1.9.0"
+  }
+}
