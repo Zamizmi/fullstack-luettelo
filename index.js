@@ -105,8 +105,8 @@ app.post('/api/persons', (req, res) => {
   })
 
   Person.find( { name: body.name }).then(result => {
-    if(result) {
-      console.log('Error: cant create duplicates')
+    if(result=== body.name) {
+      console.log(result, 'Error: cant create duplicates')
       return res.status(400).json({ error: 'Cant create duplicate!' })
     } else {
       person
