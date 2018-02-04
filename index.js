@@ -4,11 +4,14 @@ const bodyParser = require('body-parser')
 const morgan = require('morgan')
 const cors = require('cors')
 const mongoose = require('mongoose')
+const Person = require('./models/person')
+
 if ( process.env.NODE_ENV !== 'production' ) {
   require('dotenv').config()
 }
 const url = process.env.MONGODB_URI
 morgan.token('body', function(req, res){ return JSON.stringify(req.body) })
+
 app.use(morgan(':method :url :status :body :response-time ms - :res[content-length]]'))
 app.use(express.static('build'))
 app.use(bodyParser.json())
@@ -17,15 +20,6 @@ app.use(cors())
 
 mongoose.connect(url)
 mongoose.Promise = global.Promise
-const Person = require('./models/person')
-
-const formatPerson = (person) => {
-  return {
-    name: person.name,
-    number: person.number,
-    id: person._id
-  }
-}
 
 app.get('/', (req, res) => {
   res.send('<h1>Hello World!</h1>')
@@ -41,7 +35,8 @@ app.get('/api/persons', (req, res) => {
   Person
     .find({})
     .then(persons => {
-      res.json(persons.map(formatPerson))
+      console.log(typeof persons)
+      res.json(persons.map(Person.format))
     })
     .catch(error => {
       console.log(error)
@@ -53,7 +48,7 @@ app.get('/api/persons/:id', (req, res) => {
   Person
     .find({ _id: req.params.id })
     .then(persons => {
-      res.json(persons.map(formatPerson))
+      res.json(persons.map(Person.format))
     })
     .catch(error => {
       console.log(error)
@@ -84,7 +79,7 @@ app.put('/api/persons/:id', (req, res) => {
   Person
     .findByIdAndUpdate(req.params.id, person, { new: true } )
     .then(updatedPerson => {
-      res.json(formatPerson(updatedPerson))
+      res.json(Person.format(updatedPerson))
     })
     .catch(error => {
       console.log(error)
@@ -111,7 +106,7 @@ app.post('/api/persons', (req, res) => {
     } else {
       person
         .save()
-        .then(formatPerson)
+        .then(Person.format(person))
         .then(savedAndFormattedPerson => {
           res.json(savedAndFormattedPerson)
           console.log('Person saved!')
