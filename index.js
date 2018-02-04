@@ -3,108 +3,125 @@ const app = express()
 const bodyParser = require('body-parser')
 const morgan = require('morgan')
 const cors = require('cors')
+const mongoose = require('mongoose')
+if ( process.env.NODE_ENV !== 'production' ) {
+  require('dotenv').config()
+}
+const url = process.env.MONGODB_URI
 morgan.token('body', function(req, res){ return JSON.stringify(req.body) })
 app.use(morgan(':method :url :status :body :response-time ms - :res[content-length]]'))
 app.use(express.static('build'))
 app.use(bodyParser.json())
 app.use(cors())
 
-let persons = [
-    {
-    id: 1,
-    name: 'Arto Hellas',
-    number:'040-123456'
-  },
-  {
-    id: 2,
-    name: 'Martti Tienari',
-    number:'040-123456'
-  },
-  {
-    id: 3,
-    name: 'Arto Järvinen',
-    number:'040-123456'
-  },
-  {
-    id: 4,
-    name: 'Lea Kutvonen',
-    number:'040-123456'
+
+mongoose.connect(url)
+mongoose.Promise = global.Promise
+const Person = require('./models/person')
+
+const formatPerson = (person) => {
+  return {
+    name: person.name,
+    number: person.number,
+    id: person._id
   }
-]
+}
 
 app.get('/', (req, res) => {
   res.send('<h1>Hello World!</h1>')
 })
 
-app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  const person = persons.find(person => person.id === id )
-
-  if ( person ) {
-    response.json(person)
-  } else {
-    response.status(404).end()
-  }
-})
-
-app.get('/api/notes/:id', (request, response) => {
-  const id = Number(request.params.id)
-  const npte = notes.find(note => note.id === id )
-
-  if ( note ) {
-    response.json(note)
-  } else {
-    response.status(404).end()
-  }
-})
-
-app.get('/api/notes', (req, res) => {
-  res.json(notes)
-})
-
 app.get('/info', (req, res) => {
-  res.send('<p>Puhelinluettelossa on ' + persons.length + ' henkilön tiedot</p> <p>' + new Date + '</p>')
+  Person.find({}).then(persons => {
+    res.send('<p>Puhelinluettelossa on ' + persons.length + ' henkilön tiedot</p> <p>' + new Date + '</p>')
+  })
 })
 
 app.get('/api/persons', (req, res) => {
-  res.json(persons)
+  Person
+    .find({})
+    .then(persons => {
+      res.json(persons.map(formatPerson))
+    })
+    .catch(error => {
+      console.log(error)
+      res.status(404).end()
+    })
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  persons = persons.filter(person => person.id !== id)
-
-  response.status(204).end()
+app.get('/api/persons/:id', (req, res) => {
+  Person
+    .find({ _id: req.params.id })
+    .then(persons => {
+      res.json(persons.map(formatPerson))
+    })
+    .catch(error => {
+      console.log(error)
+      res.status(404).end()
+    })
 })
 
-const generateId = () => {
-  return Math.floor(Math.random()*10000)
-}
+app.delete('/api/persons/:id', (req, res) => {
+  Person
+    .findByIdAndRemove(req.params.id)
+    .then(result => {
+      res.status(204).end()
+    })
+    .catch(error => {
+      console.log(error)
+      res.status(400).send({ error: 'malformatted id' })
+    })
+})
 
-const names = () => {
-  return persons.map(person => person.name)
-}
-
-app.post('/api/persons', (request, response) => {
-  const body = request.body
-
-  if (body.name === undefined || body.number === undefined) {
-    return response.status(400).json({error: 'name or number missing!'})
-  }
-
-  if (names().includes(body.name)){
-    return response.status(400).json({error: 'name must be unique!'})
-  }
+app.put('/api/persons/:id', (req, res) => {
+  const body = req.body
 
   const person = {
     name: body.name,
-    number: body.number,
-    id: generateId()
+    number: body.number
   }
 
-  persons = persons.concat(person)
+  Person
+    .findByIdAndUpdate(req.params.id, person, { new: true } )
+    .then(updatedPerson => {
+      res.json(formatPerson(updatedPerson))
+    })
+    .catch(error => {
+      console.log(error)
+      res.status(400).json({ error: 'malformatted id' })
+    })
+})
 
-  response.json(person)
+app.post('/api/persons', (req, res) => {
+  const body = req.body
+
+  if (body.name === undefined || body.number === undefined) {
+    return res.status(400).json({ error: 'name or number missing!' })
+  }
+
+  const person = new Person({
+    name: body.name,
+    number: body.number
+  })
+
+  Person.find( { name: body.name }).then(result => {
+    if(result) {
+      console.log('Error: cant create duplicates')
+      return res.status(400).json({ error: 'Cant create duplicate!' })
+    } else {
+      person
+        .save()
+        .then(formatPerson)
+        .then(savedAndFormattedPerson => {
+          res.json(savedAndFormattedPerson)
+          console.log('Person saved!')
+        })
+        .catch(error => {
+          console.log(error)
+          res.status(400).end()
+        })
+    }
+  })
 })
 
 const PORT = process.env.PORT || 3001
